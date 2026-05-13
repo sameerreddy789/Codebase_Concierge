@@ -1,6 +1,7 @@
 import os
 import shutil
 import re
+import stat
 from typing import Any, Dict, List, Set
 from git import Repo
 from services.retrieval import index_chunks
@@ -15,6 +16,11 @@ IGNORE_EXTENSIONS: Set[str] = {'.png', '.jpg', '.jpeg', '.gif', '.pdf', '.zip', 
 CLASS_REGEX = re.compile(r'(?:class\s+)([a-zA-Z0-9_]+)')
 FUNC_REGEX = re.compile(r'(?:def\s+|function\s+|const\s+)([a-zA-Z0-9_]+)\s*(?:=|\()')
 
+def remove_readonly(func, path, _):
+    """Clear the readonly bit and reattempt the file deletion."""
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
+
 def extract_signatures(text: str) -> Dict[str, List[str]]:
     """Extracts structural signatures (classes/functions) from code text."""
     return {
@@ -25,7 +31,7 @@ def extract_signatures(text: str) -> Dict[str, List[str]]:
 def ingest_repo(repo_url: str) -> None:
     """Clones a repository, chunks the code, and indexes it for retrieval.
 
-    This function is intended to be run as a background task. It updates the 
+    This function is intended to be run as a background task. It updates the
     global status_manager (WorkflowOrchestrator) at each stage.
 
     Args:
@@ -39,16 +45,16 @@ def ingest_repo(repo_url: str) -> None:
         # Atomic State Transition: CLONING
         status_manager.update_state(repo_url, WorkflowState.CLONING)
         logger.info(f"Cloning {repo_url}...")
-        
+
         if os.path.exists(repo_path):
-            shutil.rmtree(repo_path)
-        
+            shutil.rmtree(repo_path, onerror=remove_readonly)
+
         Repo.clone_from(repo_url, repo_path, depth=1)
 
         # Atomic State Transition: INDEXING
         status_manager.update_state(repo_url, WorkflowState.INDEXING)
         logger.info(f"Indexing {repo_name}...")
-        
+
         chunks: List[Dict[str, Any]] = []
         file_tree: List[str] = []
 
@@ -57,15 +63,15 @@ def ingest_repo(repo_url: str) -> None:
             for file in files:
                 if any(file.endswith(ext) for ext in IGNORE_EXTENSIONS):
                     continue
-                
+
                 file_path = os.path.join(root, file)
                 rel_path = os.path.relpath(file_path, repo_path)
                 file_tree.append(rel_path)
 
                 try:
                     with open(file_path, 'r', encoding='utf-8') as f:
-                        content = f.read()
-                        lines = content.split('\n')
+                        content_file = f.read()
+                        lines = content_file.split('\n')
                         for i in range(0, len(lines), 150):
                             chunk_lines = lines[i:i+200]
                             chunk_text = '\n'.join(chunk_lines)
@@ -75,7 +81,7 @@ def ingest_repo(repo_url: str) -> None:
                             chunks.append({
                                 "text": f"File: {rel_path}\nLines: {i+1}-{i+len(chunk_lines)}\n\n{chunk_text}",
                                 "metadata": {
-                                    "path": rel_path, 
+                                    "path": rel_path,
                                     "repo": repo_name,
                                     "classes": ",".join(signatures["classes"]),
                                     "functions": ",".join(signatures["functions"])
@@ -90,7 +96,7 @@ def ingest_repo(repo_url: str) -> None:
         # Compression Layer
         key_files_content: Dict[str, str] = {}
         key_patterns = ['README', 'package.json', 'requirements.txt', 'main.py', 'App.jsx', 'index.html']
-        
+
         for rel_path in file_tree:
             if any(pattern in rel_path for pattern in key_patterns):
                 try:
@@ -101,26 +107,26 @@ def ingest_repo(repo_url: str) -> None:
                     logger.debug(f"Could not read key file {rel_path}: {e}")
 
         summary = {
-            "name": repo_name, 
+            "name": repo_name,
             "tree": file_tree[:200],
             "key_files": key_files_content
         }
-        
+
         storage.save_summary(repo_name, summary)
-        
+
         # Final State Transition: COMPLETED
         status_manager.update_state(repo_url, WorkflowState.COMPLETED)
         logger.info(f"Successfully completed ingestion for {repo_name}")
-        
+
     except Exception as e:
         # Compensation Logic: Set state to FAILED and cleanup
         logger.error(f"Ingestion failed for {repo_url}: {e}", exc_info=True)
         status_manager.update_state(repo_url, WorkflowState.FAILED, str(e))
-        
+
         # Cleanup partial artifacts
         if os.path.exists(repo_path):
             try:
-                shutil.rmtree(repo_path)
+                shutil.rmtree(repo_path, onerror=remove_readonly)
                 logger.info(f"Cleaned up partial artifacts for {repo_name}")
             except Exception as cleanup_err:
                 logger.error(f"Failed to cleanup {repo_path}: {cleanup_err}")
