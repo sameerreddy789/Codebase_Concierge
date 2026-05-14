@@ -29,7 +29,10 @@ DIAGRAM RULES:
 - Wrap Mermaid code EXACTLY in ```mermaid ... ``` blocks.
 - Use 'graph TD' or 'sequenceDiagram' for most diagrams.
 - Keep diagrams simple and readable.
-- Ensure Mermaid syntax is valid (no special characters in node names unless quoted).
+- **CRITICAL:** Mermaid syntax is strict. ALWAYS quote node labels that contain spaces or special characters (e.g., A["My Node (Label)"]).
+- **CRITICAL:** Avoid using reserved words like 'end', 'graph', 'subgraph', 'participant' as node identifiers.
+- **CRITICAL:** Ensure all arrows are valid (e.g., -->, -- text -->, ==>, etc.).
+- **CRITICAL:** NEVER include titles, comments, or plain text INSIDE the ```mermaid ... ``` block unless they are valid Mermaid syntax (like node labels). Keep descriptions strictly OUTSIDE the block.
 - If you generate a diagram, follow it with a brief textual explanation.
 
 RESPONSE STYLE:
