@@ -26,10 +26,44 @@ class MetaStorage:
                         summary_json TEXT
                     )
                 """)
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS chat_cache (
+                        repo_name TEXT,
+                        query TEXT,
+                        response TEXT,
+                        PRIMARY KEY (repo_name, query)
+                    )
+                """)
                 conn.commit()
         except sqlite3.Error as e:
             logger.error(f"Database initialization failed: {e}")
             raise StorageError(f"Could not initialize database: {e}")
+
+    def save_chat_cache(self, repo_name: str, query: str, response: str) -> None:
+        """Caches a chat response for a specific repo and query."""
+        try:
+            with sqlite3.connect(DB_PATH) as conn:
+                conn.execute(
+                    "INSERT OR REPLACE INTO chat_cache (repo_name, query, response) VALUES (?, ?, ?)",
+                    (repo_name, query, response)
+                )
+                conn.commit()
+        except sqlite3.Error as e:
+            logger.error(f"Failed to cache chat: {e}")
+
+    def get_chat_cache(self, repo_name: str, query: str) -> Optional[str]:
+        """Retrieves a cached chat response."""
+        try:
+            with sqlite3.connect(DB_PATH) as conn:
+                cursor = conn.execute(
+                    "SELECT response FROM chat_cache WHERE repo_name = ? AND query = ?",
+                    (repo_name, query)
+                )
+                row = cursor.fetchone()
+                return row[0] if row else None
+        except sqlite3.Error as e:
+            logger.error(f"Failed to get chat cache: {e}")
+            return None
 
     def save_summary(self, repo_name: str, summary: Dict[str, Any]) -> None:
         """Saves or updates a repository summary.

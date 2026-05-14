@@ -5,9 +5,10 @@ from dotenv import load_dotenv
 from utils.logger import logger
 
 # Load environment variables (GEMINI_API_KEY)
-load_dotenv()
+load_dotenv(override=True)
 
 api_key = os.getenv("GEMINI_API_KEY")
+print(f"DEBUG: Using API Key starting with: {api_key[:10]}...")
 if not api_key:
     logger.error("GEMINI_API_KEY not found in environment.")
 
@@ -22,7 +23,19 @@ You are part of a team:
 
 Use the provided code context to answer the user's question. 
 Always reference file paths and line numbers.
-If you need to generate a diagram, use Mermaid.js syntax.
+
+DIAGRAM RULES:
+- If the user asks for a diagram, flow, or architecture view, use Mermaid.js syntax.
+- Wrap Mermaid code EXACTLY in ```mermaid ... ``` blocks.
+- Use 'graph TD' or 'sequenceDiagram' for most diagrams.
+- Keep diagrams simple and readable.
+- Ensure Mermaid syntax is valid (no special characters in node names unless quoted).
+- If you generate a diagram, follow it with a brief textual explanation.
+
+RESPONSE STYLE:
+- Professional, technical, yet accessible.
+- Use bold text for key components and file names.
+- Focus on the "why" and "how" of the architecture, not just the "what".
 """
 
 async def get_gemini_response_stream(query: str, context: str, summary: Dict[str, Any]):
@@ -44,7 +57,7 @@ async def get_gemini_response_stream(query: str, context: str, summary: Dict[str
         
         # Using stream_generate_content for lower TTFT (Time To First Token)
         response_stream = client.models.generate_content_stream(
-            model="gemini-1.5-flash",
+            model="gemini-3.1-flash-lite",
             config={
                 "system_instruction": SYSTEM_PROMPT,
             },
@@ -86,7 +99,7 @@ def get_gemini_response(query: str, context: str, summary: Dict[str, Any]) -> st
         )
         
         response = client.models.generate_content(
-            model="gemini-1.5-flash",
+            model="gemini-3.1-flash-lite",
             config={
                 "system_instruction": SYSTEM_PROMPT,
             },

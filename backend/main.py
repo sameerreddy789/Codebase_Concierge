@@ -73,6 +73,11 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
         content={"detail": "An internal server error occurred.", "message": str(exc)},
     )
 
+@app.get("/")
+async def root():
+    """Root endpoint to verify the API is running."""
+    return {"message": "Codebase Concierge API is running. Use the frontend to interact."}
+
 @app.post("/ingest", status_code=202)
 async def ingest(request: IngestRequest, background_tasks: BackgroundTasks) -> Dict[str, str]:
     """Starts the repository ingestion process in the background.
@@ -113,12 +118,27 @@ async def chat(request: ChatRequest):
     if not summary:
         raise HTTPException(status_code=404, detail="Repository not found.")
         
+    # Demo Optimization: Check Cache First
+    cached_response = storage.get_chat_cache(request.repo_name, request.query)
+    if cached_response:
+        logger.info(f"Cache hit for query: {request.query}")
+        async def cached_stream_generator():
+            # Yield the entire cached response as one chunk for speed
+            yield f"data: {json.dumps({'text': cached_response, 'cached': True})}\n\n"
+        return StreamingResponse(cached_stream_generator(), media_type="text/event-stream")
+
     async def stream_generator():
         # 1. Retrieve context
         context = query_chroma(request.repo_name, request.query)
-        # 2. Yield streaming chunks
+        # 2. Yield streaming chunks and accumulate for caching
+        full_response = ""
         async for chunk in get_gemini_response_stream(request.query, context, summary):
+            full_response += chunk
             yield f"data: {json.dumps({'text': chunk})}\n\n"
+        
+        # 3. Cache the completed response (only if successful)
+        if full_response and "Error: Encountered an issue" not in full_response:
+            storage.save_chat_cache(request.repo_name, request.query, full_response)
 
     return StreamingResponse(stream_generator(), media_type="text/event-stream")
 
