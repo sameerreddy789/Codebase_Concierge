@@ -151,15 +151,22 @@ async def list_repos() -> Dict[str, List[str]]:
 @app.get("/repos/{repo_name}/files/{file_path:path}")
 async def get_file_content(repo_name: str, file_path: str):
     """Retrieves the content of a specific file in a repository."""
-    repo_path = os.path.join("repos", repo_name, file_path)
+    # Normalize path for the current OS
+    safe_file_path = file_path.replace("/", os.sep).replace("\\", os.sep)
+    repo_path = os.path.abspath(os.path.join("repos", repo_name, safe_file_path))
+    
+    logger.info(f"Attempting to read file: {repo_path}")
+    
     if not os.path.exists(repo_path):
-        raise HTTPException(status_code=404, detail="File not found.")
+        logger.error(f"File not found on disk: {repo_path}")
+        raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
     
     try:
         with open(repo_path, 'r', encoding='utf-8') as f:
             content = f.read()
         return {"content": content}
     except Exception as e:
+        logger.error(f"Error reading file {repo_path}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/repos/{repo_name}/summary")
