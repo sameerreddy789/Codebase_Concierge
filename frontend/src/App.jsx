@@ -16,7 +16,26 @@ function App() {
   const [query, setQuery] = useState('');
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [agentStatus, setAgentStatus] = useState('');
   const [availableRepos, setAvailableRepos] = useState([]);
+  
+  useEffect(() => {
+    if (loading) {
+      const statuses = [
+        'Analyst is scanning file tree...',
+        'Retriever is searching for relevant chunks...',
+        'Explainer is generating architectural summary...',
+        'Gemini is synthesizing insights...'
+      ];
+      setAgentStatus(statuses[0]);
+      let i = 1;
+      const interval = setInterval(() => {
+        setAgentStatus(statuses[i % statuses.length]);
+        i++;
+      }, 2500);
+      return () => clearInterval(interval);
+    }
+  }, [loading]);
   
   const [repoTree, setRepoTree] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -24,6 +43,18 @@ function App() {
   const [isViewerOpen, setIsViewerOpen] = useState(false);
 
   const chatEndRef = useRef(null);
+
+  useEffect(() => {
+    // Expose nodeClick to global window for Mermaid interactive clicks
+    window.nodeClick = (path) => {
+      console.log("Diagram node clicked, opening:", path);
+      handleFileSelect(path);
+    };
+
+    return () => {
+      delete window.nodeClick;
+    };
+  }, [repoName]); // Re-bind if repoName changes, though path is usually absolute relative to repo
 
   const fetchRepoData = async (name) => {
     if (!name) return;
@@ -187,6 +218,7 @@ function App() {
           repoName={repoName} 
           repoTree={repoTree} 
           onFileSelect={handleFileSelect} 
+          selectedFile={selectedFile}
         />
 
         <main className="flex-1 clay-flat flex flex-col p-6 overflow-hidden relative">
@@ -207,6 +239,8 @@ function App() {
                       "Draw a Mermaid diagram of the overall architecture.",
                       "Where is the main entry point and routing logic?",
                       "Explain the authentication flow.",
+                      "Show me the data flow of a core request.",
+                      "What are the primary design patterns used?",
                       "List the external dependencies and their purpose."
                     ].map((prompt, i) => (
                       <button
@@ -234,7 +268,7 @@ function App() {
                     <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
                     <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
                   </div>
-                  <span className="text-xs text-slate-400 font-medium">{pollingMessage || 'Analyzing codebase...'}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-500 animate-pulse">{agentStatus}</span>
                 </div>
               </div>
             )}

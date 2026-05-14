@@ -10,20 +10,30 @@ const FileIcon = ({ name }) => {
   return <File className="w-4 h-4 text-slate-400" />;
 };
 
-const FileTreeItem = ({ item, onFileSelect }) => {
+const FileTreeItem = ({ item, onFileSelect, selectedFile }) => {
   const isFolder = item.type === 'folder';
+  const isSelected = selectedFile === item.path;
   const [isOpen, setIsOpen] = useState(false);
+
+  // Automatically open folder if a child is selected
+  useEffect(() => {
+    if (selectedFile && selectedFile.startsWith(item.path + '/') && isFolder) {
+      setIsOpen(true);
+    }
+  }, [selectedFile, item.path, isFolder]);
 
   return (
     <div className="select-none">
       <div 
-        className="flex items-center gap-2 py-1 px-2 rounded-lg hover:bg-indigo-50/50 cursor-pointer transition-colors group"
+        className={`flex items-center gap-2 py-1 px-2 rounded-lg cursor-pointer transition-colors group ${
+          isSelected ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-indigo-50/50'
+        }`}
         onClick={() => isFolder ? setIsOpen(!isOpen) : onFileSelect(item.path)}
       >
         {isFolder ? (
           <>
             {isOpen ? <ChevronDown className="w-3 h-3 text-slate-400" /> : <ChevronRight className="w-3 h-3 text-slate-400" />}
-            <Folder className={`w-4 h-4 ${isOpen ? 'text-indigo-500' : 'text-slate-400'}`} />
+            <Folder className={`w-4 h-4 ${isOpen || isSelected ? 'text-indigo-500' : 'text-slate-400'}`} />
           </>
         ) : (
           <>
@@ -31,7 +41,9 @@ const FileTreeItem = ({ item, onFileSelect }) => {
             <FileIcon name={item.name} />
           </>
         )}
-        <span className={`text-xs font-medium ${isFolder ? 'text-slate-600' : 'text-slate-500 group-hover:text-indigo-600'}`}>
+        <span className={`text-xs font-medium ${
+          isFolder ? 'text-slate-600' : isSelected ? 'text-indigo-700' : 'text-slate-500 group-hover:text-indigo-600'
+        }`}>
           {item.name}
         </span>
       </div>
@@ -45,7 +57,7 @@ const FileTreeItem = ({ item, onFileSelect }) => {
             className="ml-4 border-l border-slate-100 overflow-hidden"
           >
             {item.children.map((child, i) => (
-              <FileTreeItem key={i} item={child} onFileSelect={onFileSelect} />
+              <FileTreeItem key={i} item={child} onFileSelect={onFileSelect} selectedFile={selectedFile} />
             ))}
           </motion.div>
         )}
@@ -54,7 +66,7 @@ const FileTreeItem = ({ item, onFileSelect }) => {
   );
 };
 
-const Sidebar = ({ repoName, onFileSelect, repoTree = [] }) => {
+const Sidebar = ({ repoName, onFileSelect, selectedFile, repoTree = [] }) => {
   const [structuredTree, setRepoTree] = useState([]);
 
   useEffect(() => {
@@ -97,7 +109,7 @@ const Sidebar = ({ repoName, onFileSelect, repoTree = [] }) => {
         <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
           {structuredTree.length > 0 ? (
             structuredTree.map((item, i) => (
-              <FileTreeItem key={i} item={item} onFileSelect={onFileSelect} />
+              <FileTreeItem key={i} item={item} onFileSelect={onFileSelect} selectedFile={selectedFile} />
             ))
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-2 opacity-50">

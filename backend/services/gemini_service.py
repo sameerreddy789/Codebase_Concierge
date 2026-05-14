@@ -35,6 +35,16 @@ DIAGRAM RULES:
 - **CRITICAL:** Avoid using reserved words like 'end', 'graph', 'subgraph', 'participant' as node identifiers.
 - **CRITICAL:** Ensure all arrows are valid (e.g., -->, -- text -->, ==>, etc.).
 - **CRITICAL:** NEVER include titles, comments, or plain text INSIDE the ```mermaid ... ``` block unless they are valid Mermaid syntax (like node labels). Keep descriptions strictly OUTSIDE the block.
+- **INTERACTIVE DIAGRAMS:** For every node that represents a specific file or folder in the codebase, you MUST append a click event using the following syntax:
+  `click NodeID call nodeClick("relative/path/to/file.ext")`
+  Example:
+  ```mermaid
+  graph TD
+    A[main.py] --> B[utils.py]
+    click A call nodeClick("backend/main.py")
+    click B call nodeClick("backend/utils/utils.py")
+  ```
+- Use the exact relative paths as they appear in the provided File Tree context.
 - If you generate a diagram, follow it with a brief textual explanation.
 
 RESPONSE STYLE:

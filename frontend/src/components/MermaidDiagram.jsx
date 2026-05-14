@@ -3,6 +3,7 @@ import mermaid from 'mermaid';
 
 mermaid.initialize({
   startOnLoad: true,
+  securityLevel: 'loose', // Required for interactive clicks
   theme: 'base',
   themeVariables: {
     primaryColor: '#6366f1',
@@ -22,9 +23,11 @@ const MermaidDiagram = memo(({ chart }) => {
     if (ref.current && chart && chart.length > 10) {
       try {
         setError(false);
+        // Clear previous content to avoid duplicate rendering and reset state
         ref.current.removeAttribute('data-processed');
-        // Clear previous content to avoid duplicate rendering
         ref.current.innerHTML = chart;
+        
+        // Re-render
         mermaid.contentLoaded();
       } catch (e) {
         console.error("Mermaid render error", e);
