@@ -1,7 +1,7 @@
 import React from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { X, ExternalLink } from 'lucide-react';
+import { X, ExternalLink, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from './ui/Button';
 
@@ -20,9 +20,20 @@ const CodeViewer = ({ isOpen, onClose, content, filePath, repoName }) => {
             className="w-full max-w-3xl h-full clay-flat overflow-hidden flex flex-col pointer-events-auto shadow-[0_20px_50px_rgba(0,0,0,0.2)]"
           >
             <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-white/50 backdrop-blur-sm">
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">{repoName}</span>
-                <span className="text-sm font-semibold text-slate-700">{filePath}</span>
+              <div className="flex items-center gap-4">
+                <Button 
+                  variant="ghost" 
+                  onClick={onClose} 
+                  className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 transition-colors"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span className="text-sm font-bold uppercase tracking-wider">Back</span>
+                </Button>
+                <div className="w-px h-6 bg-slate-200" />
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">{repoName}</span>
+                  <span className="text-sm font-semibold text-slate-700">{filePath}</span>
+                </div>
               </div>
               <div className="flex gap-2">
                 <Button variant="ghost" onClick={onClose} className="p-2 h-10 w-10">
